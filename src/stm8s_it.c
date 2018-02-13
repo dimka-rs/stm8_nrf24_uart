@@ -525,13 +525,6 @@ INTERRUPT_HANDLER(TIM6_UPD_OVF_TRG_IRQHandler, 23)
   /* In order to detect unexpected events during development,
      it is recommended to set a breakpoint on the following instruction.
   */
-	static uint16_t cnt = 0;
-	cnt++;
-	if(cnt > 1000){
-		cnt = 0;
-		GPIO_WriteReverse(GPIOB, GPIO_PIN_5);
-	}
-	TIM4_ClearITPendingBit(TIM4_IT_UPDATE);
   return;
  }
 #endif /* (STM8S903) || (STM8AF622x)*/
