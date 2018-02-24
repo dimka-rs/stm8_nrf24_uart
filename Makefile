@@ -22,7 +22,7 @@ SKIP_TRAPS = 0
 # set compiler path & parameters 
 CC_ROOT = /home/dimka/apps/sdcc/bin
 CC      = $(CC_ROOT)/sdcc
-CFLAGS  = -mstm8 -lstm8 --opt-code-size
+CFLAGS  = -mstm8 -lstm8 --opt-code-size --std-c99
 
 # required for some examples for STM8S EVAL board
 #CFLAGS += -DUSE_STM8_128_EVAL
@@ -43,7 +43,7 @@ PRJ_OBJECTS := $(addprefix $(OUTPUT_DIR)/, $(PRJ_SOURCE:.c=.rel))
 SPL_SRC_DIR = ./STM8S_StdPeriph_Driver/src
 SPL_INC_DIR = ./STM8S_StdPeriph_Driver/inc
 # add all library sources used here
-SPL_SOURCE  = stm8s_gpio.c stm8s_tim4.c
+SPL_SOURCE  = stm8s_gpio.c stm8s_tim4.c stm8s_uart1.c stm8s_clk.c
 SPL_OBJECTS := $(addprefix $(OUTPUT_DIR)/, $(SPL_SOURCE:.c=.rel))
 
 # collect all include folders

@@ -29,27 +29,43 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm8s.h"
 #include "main.h"
+#include "nrf.h"
 
 /* Private defines -----------------------------------------------------------*/
+#define RX_TOUT 10  // num of tim4 overflows, which are about 0.1 ms or 1 symbol
+#define RX_BUF_SIZE 256
+uint8_t RxBuf[RX_BUF_SIZE];
+uint8_t RxOffset = 0;
+uint8_t RxDone;
+
 /* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
 void Init();
+
+/* Private functions ---------------------------------------------------------*/
 
 void main(void)
 {
 	Init();
   
-  while (1)
-  {
-    // Toggle a bit in the output data register to blink the LED
-	//GPIO_WriteReverse(PORT_LED, PIN_LED); 
-  }
+	while (1)
+	{
+		while(RxDone)
+		{
+			RxDone = 0;
+			NRF_SendBuffer(RxBuf, RxOffset);
+			RxOffset = 0;
+		}
+
+	}
 }
 
 void Init()
 {
 	/* Clock */
-	//TODO: set 16 MHz
+	/* SYSCLK = 16 MHz */
+	CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV1);
+	/* CPUCLK = 8 MHz */
+	CLK_SYSCLKConfig(CLK_PRESCALER_CPUDIV2);
 	
     /* LED */
 	GPIO_Init(PORT_LED, PIN_LED, GPIO_MODE_OUT_PP_LOW_SLOW);
@@ -58,10 +74,20 @@ void Init()
 	/* NRF_CE */
   	GPIO_Init(PORT_NRF, PIN_NRF_CE, GPIO_MODE_OUT_PP_HIGH_SLOW);
 
+	/* UART 1 */
+	UART1_Init(115200, UART1_WORDLENGTH_8D, UART1_STOPBITS_1,
+				UART1_PARITY_NO, UART1_SYNCMODE_CLOCK_DISABLE,
+				UART1_MODE_TXRX_ENABLE);
+	UART1_ITConfig(UART1_IT_RXNE, ENABLE);
+	UART1_Cmd(ENABLE);
+
 	/* Timer 4 */
-	/* 2 MHz / 16 = 125000, so period is 125 to get 1 ms */
+	/* 16 MHz / 64 = 250 kHz timer clock */
+	/* count to 25 to get 10 kHz / 0.1 ms resolution */
+	/* one byte over uart takes about 0.1 ms */
     TIM4_Cmd(DISABLE);
-    TIM4_TimeBaseInit(TIM4_PRESCALER_16, 125);
+    TIM4_TimeBaseInit(TIM4_PRESCALER_64, 25);
+	TIM4_SelectOnePulseMode(TIM4_OPMODE_SINGLE);
     TIM4_ClearFlag(TIM4_FLAG_UPDATE);
     TIM4_ITConfig(TIM4_IT_UPDATE, ENABLE);	
 	TIM4_Cmd(ENABLE);
@@ -69,14 +95,24 @@ void Init()
 	enableInterrupts();
 }
 
+/***********************************************************************/
+
 void tim4_isr(void) __interrupt(ITC_IRQ_TIM4_OVF) {
-    static uint16_t cnt = 0;
-    cnt++;
-    if(cnt > 1000){
-        cnt = 0;
-        GPIO_WriteReverse(GPIOB, GPIO_PIN_5);
+    static uint8_t tim4cnt = 0;
+	TIM4_ClearITPendingBit(TIM4_IT_UPDATE);
+    tim4cnt++;
+    if(tim4cnt >= RX_TOUT){
+		TIM4_Cmd(DISABLE); //TODO: remove if one pulse mode really works
+		tim4cnt = 0;
+		RxDone = 1;
     }   
-    TIM4_ClearITPendingBit(TIM4_IT_UPDATE);
+}
+
+void uart1rx_isr(void) __interrupt(ITC_IRQ_UART1_RX) {
+	UART1_ClearFlag(UART1_FLAG_RXNE);
+	TIM4_Cmd(ENABLE);
+	TIM4_SetCounter(0);
+	RxBuf[RxOffset] = UART1_ReceiveData8();
 }
 
 // This is called by some of the SPL files on error.
