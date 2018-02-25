@@ -29,7 +29,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm8s.h"
 #include "main.h"
-#include "nrf.h"
+#include "nrf24.h"
 
 /* Private defines -----------------------------------------------------------*/
 #define UART1_BAUDRATE 115200
@@ -50,7 +50,6 @@ void main(void)
   
 	while (1)
 	{
-		volatile uint16_t delay;
 		//while(UART1_GetFlagStatus(UART1_FLAG_TXE) != SET);
 		while(RxDone)
 		{
@@ -66,9 +65,9 @@ void main(void)
 void Init()
 {
 	/* Clock */
-	/* SYSCLK = 16 MHz */
+	/* SYSCLK: 16/1 = 16 MHz */
 	CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV1);
-	/* CPUCLK = 8 MHz */
+	/* CPUCLK: 16/2 = 8 MHz */
 	CLK_SYSCLKConfig(CLK_PRESCALER_CPUDIV2);
 	
     /* LED */
@@ -77,6 +76,8 @@ void Init()
 	GPIO_Init(PORT_NRF, PIN_NRF_CS, GPIO_MODE_OUT_PP_HIGH_SLOW);
 	/* NRF_CE */
   	GPIO_Init(PORT_NRF, PIN_NRF_CE, GPIO_MODE_OUT_PP_HIGH_SLOW);
+	/* ADDRESS PIN */
+	GPIO_Init(PORT_ADDR, PIN_ADDR_1, GPIO_MODE_IN_PU_NO_IT);
 
 	/* UART 1 */
 	UART1_Init(UART1_BAUDRATE, UART1_WORDLENGTH_8D, UART1_STOPBITS_1,
