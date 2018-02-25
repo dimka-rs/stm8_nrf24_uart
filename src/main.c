@@ -52,10 +52,9 @@ void main(void)
 	{
 		volatile uint16_t delay;
 		//while(UART1_GetFlagStatus(UART1_FLAG_TXE) != SET);
-		GPIO_WriteReverse(PORT_LED, PIN_LED);
-		for(delay = 0; delay < 0xFFFF; delay++);
 		while(RxDone)
 		{
+			GPIO_WriteHigh(PORT_LED, PIN_LED);
 			RxDone = 0;
 			NRF_SendBuffer(RxBuf, RxOffset);
 			RxOffset = 0;
@@ -84,9 +83,8 @@ void Init()
 				UART1_PARITY_NO, UART1_SYNCMODE_CLOCK_DISABLE,
 				UART1_MODE_TXRX_ENABLE);
 	UART1_ClearFlag(UART1_FLAG_RXNE);
-	//UART1_ITConfig(UART1_IT_RXNE, ENABLE); // DOES NOT WORK
-	UART1->CR2 |= (uint8_t)UART1_FLAG_RXNE;
-	GPIO_WriteLow(PORT_LED, PIN_LED);
+	/* RXNE fails assert, RXNE_OR works fine */
+	UART1_ITConfig(UART1_IT_RXNE_OR, ENABLE);
 
 	/* Timer 4 */
 	/* 16 MHz / 64 = 250 kHz timer clock */
@@ -94,10 +92,10 @@ void Init()
 	/* one byte over uart takes about 0.1 ms */
     TIM4_Cmd(DISABLE);
     TIM4_TimeBaseInit(TIM4_PRESCALER_64, 25);
-	TIM4_SelectOnePulseMode(TIM4_OPMODE_SINGLE);
+	//TIM4_SelectOnePulseMode(TIM4_OPMODE_SINGLE);
     TIM4_ClearFlag(TIM4_FLAG_UPDATE);
     TIM4_ITConfig(TIM4_IT_UPDATE, ENABLE);	
-	TIM4_Cmd(ENABLE);
+	//TIM4_Cmd(ENABLE);
 
 	enableInterrupts();
 }
@@ -117,9 +115,11 @@ void tim4_isr(void) __interrupt(ITC_IRQ_TIM4_OVF) {
 
 void uart1rx_isr(void) __interrupt(ITC_IRQ_UART1_RX) {
 	UART1_ClearFlag(UART1_FLAG_RXNE);
+	GPIO_WriteLow(PORT_LED, PIN_LED);
 	TIM4_Cmd(ENABLE);
 	TIM4_SetCounter(0);
 	RxBuf[RxOffset] = UART1_ReceiveData8();
+	RxOffset++;
 }
 
 // This is called by some of the SPL files on error.

@@ -21,7 +21,6 @@ void NRF_SendFrame(uint8_t * Frame, uint8_t FrameSize)
 	{
 		/* This is test code to check what was received */
 		UART1_SendData8(Frame[i]);
-		GPIO_WriteReverse(PORT_LED, PIN_LED);
 	}
 }
 
