@@ -5,6 +5,7 @@
 #define MAX_FRAME_SIZE 32	//max tx payload size in bytes
 #define CE_MIN_HIGH 15		//minimal CE high time in ms
 #define REG_WMASK 0x20
+#define ADDR_SIZE 5
 /* registers */
 #define CONFIG 0x00
 #define EN_AA 0x01
@@ -43,13 +44,41 @@
 #define W_TX_PAYLOAD_NOACK 0xB0
 
 /* Define types */
-typedef enum {
+struct NRF_InitStruct {
+	uint8_t Config;
+	uint8_t EnAa;
+	uint8_t EnRxaddr;
+	uint8_t SetupAw;
+	uint8_t SetupRetr;
+	uint8_t RfCh;
+	uint8_t RfSetup;
+	uint8_t * RxAddrP0;
+	uint8_t * RxAddrP1;
+	uint8_t RxAddrP2;
+	uint8_t RxAddrP3;
+	uint8_t RxAddrP4;
+	uint8_t RxAddrP5;
+	uint8_t * TxAddr;
+	uint8_t RxPwP0;
+    uint8_t RxPwP1;
+	uint8_t RxPwP2;
+	uint8_t RxPwP3;
+	uint8_t RxPwP4;
+	uint8_t RxPwP5;
+	uint8_t Dynpd;
+	uint8_t Feature;
+};
 
-} NRF_InitStruct;
-
+/* private functions */
+static void NRF_SendFrame(uint8_t * Frame, uint8_t FrameSize);
+static uint8_t NRF_ReadReg(uint8_t RegAddr);
+static void NRF_WriteReg(uint8_t RegAddr, uint8_t RegValue);
+static void NRF_WriteAddress(uint8_t RegAddr, uint8_t * Address, uint8_t AddrLen);
+static void NRF_WritePayload(uint8_t * Buffer, uint8_t Size);
+static void NRF_FlushTx();
 
 /* public functions */
-void NRF_Init(void);
+void NRF_Init(struct NRF_InitStruct * Init);
 void NRF_SendBuffer(uint8_t * Buffer, uint8_t BufferSize);
 
 #endif

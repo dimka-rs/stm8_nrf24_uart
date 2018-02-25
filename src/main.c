@@ -39,14 +39,20 @@ uint8_t RxBuf[RX_BUF_SIZE];
 uint8_t RxOffset = 0;
 uint8_t RxDone;
 
+#define ADDR_SIZE 5
+const uint8_t addr_a[ADDR_SIZE] = {0x1A, 0x1B, 0x1C, 0x1D, 0x1E};
+const uint8_t addr_b[ADDR_SIZE] = {0x2A, 0x2B, 0x2C, 0x2D, 0x2E};
+
 /* Private function prototypes -----------------------------------------------*/
 void Init();
+void InitNrf();
 
 /* Private functions ---------------------------------------------------------*/
 
 void main(void)
 {
 	Init();
+	InitNrf();
   
 	while (1)
 	{
@@ -99,6 +105,33 @@ void Init()
 	//TIM4_Cmd(ENABLE);
 
 	enableInterrupts();
+}
+
+void InitNrf()
+{
+	struct NRF_InitStruct InitTx;
+	InitTx.Config = 0x0A; //CRC 1 byte, power up, PTX
+	InitTx.EnAa = 0x3F; //auto ack on all pipes
+	InitTx.EnRxaddr = 0x01; //pipes 0 enabled
+	InitTx.SetupAw = 0x03;  //addr width 5 bytes
+	InitTx.SetupRetr = 0x03; // art delay 250 us, art count 3
+	InitTx.RfCh = 0x02; //TODO: channel?
+	InitTx.RfSetup = 0x0E; //2 Mbit, 0 dBm
+	InitTx.RxAddrP0 = addr_a;
+	InitTx.RxAddrP1 = addr_b; //not used
+	InitTx.RxAddrP2 = 0x00;
+	InitTx.RxAddrP3 = 0x00;
+	InitTx.RxAddrP4 = 0x00;
+	InitTx.RxAddrP5 = 0x00;
+	InitTx.TxAddr = addr_a;
+	InitTx.RxPwP0 = 0x00;
+    InitTx.RxPwP1 = 0x00;
+	InitTx.RxPwP2 = 0x00;
+	InitTx.RxPwP3 = 0x00;
+	InitTx.RxPwP4 = 0x00;
+	InitTx.RxPwP5 = 0x00;
+	InitTx.Dynpd = 0x01; //dyn payload on pipe 0
+	InitTx.Feature = 0x04; //enable dyn payload
 }
 
 /***********************************************************************/
