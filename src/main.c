@@ -32,6 +32,7 @@
 #include "nrf.h"
 
 /* Private defines -----------------------------------------------------------*/
+#define UART1_BAUDRATE 115200
 #define RX_TOUT 10  // num of tim4 overflows, which are about 0.1 ms or 1 symbol
 #define RX_BUF_SIZE 256
 uint8_t RxBuf[RX_BUF_SIZE];
@@ -49,6 +50,10 @@ void main(void)
   
 	while (1)
 	{
+		volatile uint16_t delay;
+		//while(UART1_GetFlagStatus(UART1_FLAG_TXE) != SET);
+		GPIO_WriteReverse(PORT_LED, PIN_LED);
+		for(delay = 0; delay < 0xFFFF; delay++);
 		while(RxDone)
 		{
 			RxDone = 0;
@@ -68,18 +73,20 @@ void Init()
 	CLK_SYSCLKConfig(CLK_PRESCALER_CPUDIV2);
 	
     /* LED */
-	GPIO_Init(PORT_LED, PIN_LED, GPIO_MODE_OUT_PP_LOW_SLOW);
+	GPIO_Init(PORT_LED, PIN_LED, GPIO_MODE_OUT_PP_HIGH_SLOW);
 	/* NRF_CS */ 
 	GPIO_Init(PORT_NRF, PIN_NRF_CS, GPIO_MODE_OUT_PP_HIGH_SLOW);
 	/* NRF_CE */
   	GPIO_Init(PORT_NRF, PIN_NRF_CE, GPIO_MODE_OUT_PP_HIGH_SLOW);
 
 	/* UART 1 */
-	UART1_Init(115200, UART1_WORDLENGTH_8D, UART1_STOPBITS_1,
+	UART1_Init(UART1_BAUDRATE, UART1_WORDLENGTH_8D, UART1_STOPBITS_1,
 				UART1_PARITY_NO, UART1_SYNCMODE_CLOCK_DISABLE,
 				UART1_MODE_TXRX_ENABLE);
-	UART1_ITConfig(UART1_IT_RXNE, ENABLE);
-	UART1_Cmd(ENABLE);
+	UART1_ClearFlag(UART1_FLAG_RXNE);
+	//UART1_ITConfig(UART1_IT_RXNE, ENABLE); // DOES NOT WORK
+	UART1->CR2 |= (uint8_t)UART1_FLAG_RXNE;
+	GPIO_WriteLow(PORT_LED, PIN_LED);
 
 	/* Timer 4 */
 	/* 16 MHz / 64 = 250 kHz timer clock */
