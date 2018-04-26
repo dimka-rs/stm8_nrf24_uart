@@ -69,16 +69,12 @@ struct NRF_InitStruct {
 	uint8_t Feature;
 };
 
-/* private functions */
-static void NRF_SendFrame(uint8_t * Frame, uint8_t FrameSize);
-static uint8_t NRF_ReadReg(uint8_t RegAddr);
-static void NRF_WriteReg(uint8_t RegAddr, uint8_t RegValue);
-static void NRF_WriteAddress(uint8_t RegAddr, uint8_t * Address, uint8_t AddrLen);
-static void NRF_WritePayload(uint8_t * Buffer, uint8_t Size);
-static void NRF_FlushTx();
-
 /* public functions */
-void NRF_Init(struct NRF_InitStruct * Init);
-void NRF_SendBuffer(uint8_t * Buffer, uint8_t BufferSize);
+void NRF_SendFrame(uint8_t * Frame, uint8_t FrameSize);
+uint8_t NRF_ReadReg(uint8_t RegAddr);
+void NRF_WriteReg(uint8_t RegAddr, uint8_t RegValue);
+void NRF_WriteAddress(uint8_t RegAddr, uint8_t * Address, uint8_t AddrLen);
+void NRF_WritePayload(uint8_t * Buffer, uint8_t Size);
+void NRF_FlushTx();
 
 #endif

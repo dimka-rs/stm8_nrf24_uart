@@ -34,14 +34,16 @@
 /* Private defines -----------------------------------------------------------*/
 #define UART1_BAUDRATE 115200
 #define RX_TOUT 10  // num of tim4 overflows, which are about 0.1 ms or 1 symbol
-#define RX_BUF_SIZE 256
-uint8_t RxBuf[RX_BUF_SIZE];
-uint8_t RxOffset = 0;
+#define PLD_WDTH 32 //payload width
+#define BUF_SIZE PLD_WDTH-1 //1 byte for actual data size
+uint8_t RxBufA[BUF_SIZE];
+uint8_t RxBufB[BUF_SIZE];
+uint8_t *CurBuf = RxBufA;
+uint8_t CurBufCnt = 0;
 uint8_t RxDone;
 
 #define ADDR_SIZE 5
-const uint8_t addr_a[ADDR_SIZE] = {0x1A, 0x1B, 0x1C, 0x1D, 0x1E};
-const uint8_t addr_b[ADDR_SIZE] = {0x2A, 0x2B, 0x2C, 0x2D, 0x2E};
+const uint8_t addr[ADDR_SIZE] = {0x1A, 0x1B, 0x1C, 0x1D, 0x1E};
 
 /* Private function prototypes -----------------------------------------------*/
 void Init();
@@ -51,6 +53,8 @@ void InitNrf();
 
 void main(void)
 {
+	uint8_t *BufToSend = CurBuf;
+	uint8_t BufToSendCnt = CurBufCnt;
 	Init();
 	InitNrf();
   
@@ -61,8 +65,16 @@ void main(void)
 		{
 			GPIO_WriteHigh(PORT_LED, PIN_LED);
 			RxDone = 0;
-			NRF_SendBuffer(RxBuf, RxOffset);
-			RxOffset = 0;
+			//save current buffer and cnt
+			//to send them later and
+			//swap buffers to continue rx
+			if(CurBuf == RxBufA) {
+				CurBuf = RxBufB;
+			} else {
+				CurBuf = RxBufA;
+			}
+			CurBufCnt = 0;
+			NRF_SendFrame(BufToSend, BufToSendCnt);
 		}
 
 	}
@@ -109,29 +121,16 @@ void Init()
 
 void InitNrf()
 {
-	struct NRF_InitStruct InitTx;
-	InitTx.Config = 0x0A; //CRC 1 byte, power up, PTX
-	InitTx.EnAa = 0x3F; //auto ack on all pipes
-	InitTx.EnRxaddr = 0x01; //pipes 0 enabled
-	InitTx.SetupAw = 0x03;  //addr width 5 bytes
-	InitTx.SetupRetr = 0x03; // art delay 250 us, art count 3
-	InitTx.RfCh = 0x02; //TODO: channel?
-	InitTx.RfSetup = 0x0E; //2 Mbit, 0 dBm
-	InitTx.RxAddrP0 = addr_a;
-	InitTx.RxAddrP1 = addr_b; //not used
-	InitTx.RxAddrP2 = 0x00;
-	InitTx.RxAddrP3 = 0x00;
-	InitTx.RxAddrP4 = 0x00;
-	InitTx.RxAddrP5 = 0x00;
-	InitTx.TxAddr = addr_a;
-	InitTx.RxPwP0 = 0x00;
-    InitTx.RxPwP1 = 0x00;
-	InitTx.RxPwP2 = 0x00;
-	InitTx.RxPwP3 = 0x00;
-	InitTx.RxPwP4 = 0x00;
-	InitTx.RxPwP5 = 0x00;
-	InitTx.Dynpd = 0x01; //dyn payload on pipe 0
-	InitTx.Feature = 0x04; //enable dyn payload
+	NRF_WriteReg(CONFIG, 0x0A);		//CRC 1 byte, power up, PTX
+	NRF_WriteReg(EN_AA, 0x3F);		//auto ack on all pipes
+	NRF_WriteReg(EN_RXADDR, 0x01);	//pipes 0 enabled
+	NRF_WriteReg(SETUP_AW, 0x03);	//addr width 5 bytes
+	NRF_WriteReg(SETUP_RETR, 0x03);	// art delay 250 us, art count 3
+	NRF_WriteReg(RF_CH, 0x02);		//TODO: channel?
+	NRF_WriteReg(RF_SETUP, 0x0E);	//2 Mbit, 0 dBm
+	NRF_WriteAddress(RX_ADDR_P0, addr, ADDR_SIZE);	//same address for rx and tx
+	NRF_WriteAddress(TX_ADDR,    addr, ADDR_SIZE);	//
+	NRF_WriteReg(RX_PW_P0, PLD_WDTH);		// payload width
 }
 
 /***********************************************************************/
@@ -152,8 +151,8 @@ void uart1rx_isr(void) __interrupt(ITC_IRQ_UART1_RX) {
 	GPIO_WriteLow(PORT_LED, PIN_LED);
 	TIM4_Cmd(ENABLE);
 	TIM4_SetCounter(0);
-	RxBuf[RxOffset] = UART1_ReceiveData8();
-	RxOffset++;
+	CurBuf[CurBufCnt] = UART1_ReceiveData8();
+	CurBufCnt++;
 }
 
 // This is called by some of the SPL files on error.
