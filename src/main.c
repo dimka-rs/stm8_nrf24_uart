@@ -7,8 +7,10 @@
 #include "gpio.h"
 #include "uart.h"
 #include "spi.h"
+#include "timer.h"
 
 /* Private defines -----------------------------------------------------------*/
+#define PLD_SIZE 5 //payload size
 uint8_t TxBufA[PLD_SIZE];
 uint8_t TxBufB[PLD_SIZE];
 uint8_t RxBuf[PLD_SIZE];
@@ -34,53 +36,49 @@ void main(void)
     InitClock();
     InitGPIO();
     InitUART();
-    InitSPI();
-    //InitNRF();
+    InitTIM4();
     enableInterrupts();
+    InitSPI();
+    InitNRF();
 
-    printf("Start\r\n");
+
+printf("Start\r\n");
 
     printf("Config: %02X\r\n", NRF_ReadReg(NRF24_CONFIG));
     printf("EN_AA: %02X\r\n", NRF_ReadReg(NRF24_EN_AA));
+    printf("EN_RXADDR: %02X\r\n", NRF_ReadReg(NRF24_EN_RXADDR));
+    printf("RF_SETUP: %02X\r\n", NRF_ReadReg(NRF24_RF_SETUP));
+    printf("Status: %02X\r\n", NRF_ReadReg(NRF24_STATUS));
+    printf("FIFO Status: %02X\r\n", NRF_ReadReg(NRF24_FIFO_STATUS));
     while (1)
     {
         if(ReadyToSend)
         {
             ReadyToSend = 0;
             printf("Send\r\n");
-            //NRF_SendData(nrf.txbufptr, nrf.txbufsize);
+            NRF_SendData(nrf.txbufptr, nrf.txbufsize);
+            printf("Status: %02X\r\n", NRF_ReadReg(NRF24_STATUS));
+            printf("Observe: %02X\r\n", NRF_ReadReg(NRF24_OBSERVE_TX));
+            printf("FIFO Status: %02X\r\n", NRF_ReadReg(NRF24_FIFO_STATUS));
+            // clear all flags
+            NRF_WriteReg(NRF24_STATUS, STATUS_MAX_RT|STATUS_TX_DS|STATUS_RX_DR);
+            NRF_FlushTx();
         }
     }
 }
 
-/*
-void InitTimer4()
-{
-    // Timer 4
-    // 16 MHz / 64 = 250 kHz timer clock
-    // count to 25 to get 10 kHz / 0.1 ms resolution
-    // one byte over uart takes about 0.1 ms
-    TIM4_Cmd(DISABLE);
-    TIM4_TimeBaseInit(TIM4_PRESCALER_64, 25);
-    TIM4_SelectOnePulseMode(TIM4_OPMODE_SINGLE);
-    TIM4_ClearFlag(TIM4_FLAG_UPDATE);
-    TIM4_ITConfig(TIM4_IT_UPDATE, ENABLE);	
-    TIM4_Cmd(ENABLE);
-}
-*/
-
 void InitNRF()
 {
-    NRF_WriteReg(NRF24_CONFIG, CONFIG_EN_CRC|CONFIG_PRIM_RX|CONFIG_PWR_UP);
     NRF_WriteReg(NRF24_EN_AA, ENAA_P0);       //pipe 0 autoack
     NRF_WriteReg(NRF24_EN_RXADDR, ENRXA_P0);  //pipe 0 enabled
     NRF_WriteReg(NRF24_SETUP_AW, SETUP_AW_5); //addr width 5 bytes
     NRF_WriteReg(NRF24_SETUP_RETR, SETUP_RETR_ARD_250|SETUP_RETR_ARC_3); //retr delay and count
     NRF_WriteReg(NRF24_RF_CH, 2);      //TODO: channel?
-    NRF_WriteReg(NRF24_RF_SETUP, RF_SETUP_DR_2M|RF_SETUP_PWR_M0DBM);
+    NRF_WriteReg(NRF24_RF_SETUP, RF_SETUP_DR_2M|RF_SETUP_PWR_M6DBM);
+    NRF_WriteReg(NRF24_RX_PW_P0, PLD_SIZE); // payload size
     NRF_WriteAddress(NRF24_RX_ADDR_P0, addr, ADDR_SIZE); //same address for rx and tx
     NRF_WriteAddress(NRF24_TX_ADDR,    addr, ADDR_SIZE); //
-    NRF_WriteReg(NRF24_RX_PW_P0, PLD_SIZE); // payload size
+    NRF_WriteReg(NRF24_CONFIG, CONFIG_EN_CRC);
 }
 
 inline void LED_On() {
@@ -93,18 +91,13 @@ inline void LED_Off() {
 
 /***********************************************************************/
 
-/*
+
 void tim4_isr(void) __interrupt(ITC_IRQ_TIM4_OVF) {
-    static uint8_t tim4cnt = 0;
-    TIM4_ClearITPendingBit(TIM4_IT_UPDATE);
-    tim4cnt++;
-    if(tim4cnt >= RX_TOUT){
-        TIM4_Cmd(DISABLE); //TODO: remove if one pulse mode really works
-        tim4cnt = 0;
-        RxDone = 1;
-    }   
+    extern volatile uint16_t tim4cnt;
+    if(tim4cnt > 0) tim4cnt--;
+    TIM4->SR1 = (uint8_t)(~TIM4_IT_UPDATE);
 }
-*/
+
 
 void uart1rx_isr(void) __interrupt(ITC_IRQ_UART1_RX) {
     UART1->SR &= ~(UART1_FLAG_RXNE); // clear it flag

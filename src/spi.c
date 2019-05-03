@@ -1,6 +1,7 @@
 #include "stm8s.h"
 #include "main.h"
 #include "spi.h"
+#include "timer.h"
 
 void InitSPI()
 {
@@ -22,11 +23,11 @@ uint8_t SPI_SendByte(uint8_t data)
 void SPI_Start()
 {
     NRF_PORT->ODR &= ~NRF_CS_PIN;
-    for(volatile uint8_t i = 0; i < 100; i++);
+    TIM4_DelayMs(1);
 }
 
 void SPI_Stop()
 {
     NRF_PORT->ODR |= NRF_CS_PIN;
-    for(volatile uint8_t i = 0; i < 100; i++);
+    TIM4_DelayMs(1);
 }
