@@ -5,10 +5,10 @@
 #include "stdio.h"
 #include "clock.h"
 #include "gpio.h"
+#include "uart.h"
 
 /* Private defines -----------------------------------------------------------*/
-#define UART1_BAUDRATE 115200
-#define PLD_SIZE 32 //payload size
+
 
 uint8_t TxBufA[PLD_SIZE];
 uint8_t TxBufB[PLD_SIZE];
@@ -24,7 +24,6 @@ nrfctl_t nrf;
 const uint8_t addr[ADDR_SIZE] = {0x1A, 0x1B, 0x1C, 0x1D, 0x1E};
 
 /* Private function prototypes -----------------------------------------------*/
-void InitUART();
 void InitSPI();
 void InitNRF();
 static inline void LED_On();
@@ -54,18 +53,6 @@ void main(void)
             //NRF_SendData(nrf.txbufptr, nrf.txbufsize);
         }
     }
-}
-
-
-void InitUART()
-{
-    /* UART 1 */
-    UART1_Init(UART1_BAUDRATE, UART1_WORDLENGTH_8D, UART1_STOPBITS_1,
-                UART1_PARITY_NO, UART1_SYNCMODE_CLOCK_DISABLE,
-                UART1_MODE_TXRX_ENABLE);
-    UART1_ClearFlag(UART1_FLAG_RXNE);
-    /* RXNE fails assert, RXNE_OR works fine */
-    UART1_ITConfig(UART1_IT_RXNE_OR, ENABLE);
 }
 
 /*
@@ -136,11 +123,11 @@ void tim4_isr(void) __interrupt(ITC_IRQ_TIM4_OVF) {
 */
 
 void uart1rx_isr(void) __interrupt(ITC_IRQ_UART1_RX) {
-    UART1_ClearFlag(UART1_FLAG_RXNE);
+    UART1->SR &= ~(UART1_FLAG_RXNE); // clear it flag
     LED_On();
 //    TIM4_Cmd(ENABLE);
 //    TIM4_SetCounter(0);
-    CurBuf[CurBufCnt] = UART1_ReceiveData8();
+    CurBuf[CurBufCnt] = UART1->DR;
     CurBufCnt++;
     if(CurBufCnt >= PLD_SIZE)
     {

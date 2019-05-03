@@ -11,6 +11,10 @@
 #define NRF_IRQ_PORT    GPIOD
 #define NRF_IRQ_PIN     GPIO_PIN_2
 
+
+#define UART1_BAUDRATE 115200
+#define PLD_SIZE 32 //payload size
+
 /*
  * PD5 - UART1_TX
  * PD6 - UART1_RX

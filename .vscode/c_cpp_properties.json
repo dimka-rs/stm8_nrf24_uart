@@ -4,7 +4,8 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/inc"
+                "${workspaceFolder}/inc",
+                "${env:HOME}/apps/sdcc/share/sdcc/include"
             ],
             "defines": [
                 "STM8S103",
