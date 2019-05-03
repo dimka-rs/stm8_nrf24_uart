@@ -6,10 +6,9 @@
 #include "clock.h"
 #include "gpio.h"
 #include "uart.h"
+#include "spi.h"
 
 /* Private defines -----------------------------------------------------------*/
-
-
 uint8_t TxBufA[PLD_SIZE];
 uint8_t TxBufB[PLD_SIZE];
 uint8_t RxBuf[PLD_SIZE];
@@ -24,11 +23,9 @@ nrfctl_t nrf;
 const uint8_t addr[ADDR_SIZE] = {0x1A, 0x1B, 0x1C, 0x1D, 0x1E};
 
 /* Private function prototypes -----------------------------------------------*/
-void InitSPI();
 void InitNRF();
-static inline void LED_On();
-static inline void LED_Off();
-
+inline void LED_On();
+inline void LED_Off();
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -38,12 +35,13 @@ void main(void)
     InitGPIO();
     InitUART();
     InitSPI();
-    InitNRF();
+    //InitNRF();
     enableInterrupts();
 
     printf("Start\r\n");
 
-    //printf("Status: %02X\r\n", NRF_ReadReg(NRF24_STATUS));
+    printf("Config: %02X\r\n", NRF_ReadReg(NRF24_CONFIG));
+    printf("EN_AA: %02X\r\n", NRF_ReadReg(NRF24_EN_AA));
     while (1)
     {
         if(ReadyToSend)
@@ -71,20 +69,6 @@ void InitTimer4()
 }
 */
 
-void InitSPI()
-{
-/*
-    SPI_Init(SPI_FIRSTBIT_MSB,
-            SPI_BAUDRATEPRESCALER_2,
-            SPI_MODE_MASTER,
-            SPI_CLOCKPOLARITY_LOW,
-            SPI_CLOCKPHASE_1EDGE,
-            SPI_DATADIRECTION_2LINES_FULLDUPLEX,
-            SPI_NSS_SOFT,
-            0);
-            */
-}
-
 void InitNRF()
 {
     NRF_WriteReg(NRF24_CONFIG, CONFIG_EN_CRC|CONFIG_PRIM_RX|CONFIG_PWR_UP);
@@ -99,11 +83,11 @@ void InitNRF()
     NRF_WriteReg(NRF24_RX_PW_P0, PLD_SIZE); // payload size
 }
 
-static inline void LED_On() {
+inline void LED_On() {
     GPIO_WriteLow(LED_PORT, LED_PIN);
 }
 
-static inline void LED_Off() {
+inline void LED_Off() {
     GPIO_WriteHigh(LED_PORT, LED_PIN);
 }
 
@@ -144,25 +128,6 @@ void uart1rx_isr(void) __interrupt(ITC_IRQ_UART1_RX) {
         ReadyToSend = 1;
         LED_Off();
     }
-}
-
-/* Platform dependent functions */
-
-uint8_t SPI_SendByte(uint8_t Byte) {
-    //read/write byte from/to SPI
-    return (uint8_t) Byte;
-}
-
-void SPI_Start() {
-    //start SPI transaction
-}
-
-void SPI_Stop() {
-    //stop SPI transaction
-}
-
-void CE_Pulse() {
-    //assert CE for required time
 }
 
 /* Debug output*/

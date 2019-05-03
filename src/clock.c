@@ -2,9 +2,9 @@
 
 void InitClock()
 {
-    /* SYSCLK: 16/2 = 8 MHz */
-    /* CPUCLK: 8/1 = 8 MHz */
+    /* SYSCLK: 16/1 = 16 MHz */
+    /* CPUCLK: 16/2 = 8 MHz */
 
-    CLK->CKDIVR = CLK_PRESCALER_HSIDIV2 | (CLK_PRESCALER_CPUDIV1 & 7);
+    CLK->CKDIVR = CLK_PRESCALER_HSIDIV1 | (CLK_PRESCALER_CPUDIV2 & 7);
 
 }

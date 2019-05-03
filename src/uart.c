@@ -6,11 +6,12 @@ void InitUART()
     /* UART 1 */
 
     // UART_DIV = f MASTER / baud rate
-    // UART_DIV = 8 * 10^6 / 115200
-    // UART_DIV = 69.44 = 0x0045 = 0x0 (BRR2_H), 0x04 (BRR1), 0x05 (BRR2_L)
+    // UART_DIV = 16 * 10^6 / 115200
+    // UART_DIV = 138.89 = 0x008B = 0x0 (BRR2_H), 0x08 (BRR1), 0x0B (BRR2_L)
+    // prescaler updated after BRR1 write, so BRR2 is written first
+    UART1->BRR2 = 0x0B;
+    UART1->BRR1 = 0x08;
 
-    UART1->BRR2 = 0x05;
-    UART1->BRR1 = 0x04;
 
     UART1->CR1 = 0; // enable, 8bit, no parity
     UART1->CR2 = UART1_CR2_TEN|UART1_CR2_REN; // rx+tx

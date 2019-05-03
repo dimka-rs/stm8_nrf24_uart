@@ -1,11 +1,9 @@
 #include "stm8s.h"
 #include "main.h"
+#include "spi.h"
 #include "nrf24.h"
 
 /* Platform dependent functions *************************************/
-uint8_t SPI_SendByte(uint8_t Byte);	//read/write byte from/to SPI
-void SPI_Start();					//start SPI transaction
-void SPI_Stop();					//stop SPI transaction
 void CE_Pulse();					//assert CE for required time
 
 
@@ -66,3 +64,11 @@ void NRF_FlushTx()
 	SPI_Stop();
 }
 
+
+void CE_Pulse()
+{
+	NRF_PORT->ODR |= NRF_CE_PIN;
+	// > 10us
+	for(volatile uint8_t i = 0; i < 100; i++);
+	NRF_PORT->ODR &= ~NRF_CE_PIN;
+}
