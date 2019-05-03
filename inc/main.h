@@ -1,12 +1,15 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
-#define PORT_LED    GPIOB
-#define PIN_LED     GPIO_PIN_5
+#define LED_PORT    GPIOB
+#define LED_PIN     GPIO_PIN_5
 
-#define PORT_NRF    GPIOC
-#define PIN_NRF_CS  GPIO_PIN_4
-#define PIN_NRF_CE  GPIO_PIN_3
+#define NRF_PORT    GPIOC
+#define NRF_CS_PIN  GPIO_PIN_4
+#define NRF_CE_PIN  GPIO_PIN_3
+
+#define NRF_IRQ_PORT    GPIOD
+#define NRF_IRQ_PIN     GPIO_PIN_2
 
 /*
  * PD5 - UART1_TX

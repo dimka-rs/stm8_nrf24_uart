@@ -10,7 +10,7 @@ void CE_Pulse();					//assert CE for required time
 
 
 /* Public functions ************************************************/
-void NRF_SendFrame(uint8_t * Frame, uint8_t FrameSize)
+void NRF_SendData(uint8_t * Frame, uint8_t FrameSize)
 {
 	NRF_WritePayload(Frame, FrameSize);
 	CE_Pulse();
@@ -50,7 +50,7 @@ void NRF_WritePayload(uint8_t * Buffer, uint8_t Size)
 {
 	uint8_t i;
 	SPI_Start();
-	SPI_SendByte(W_TX_PAYLOAD);
+	SPI_SendByte(NRF24_W_TX_PAYLOAD);
 	for(i = 0; i < Size; i++)
 	{
 		SPI_SendByte(Buffer[i]);
@@ -62,7 +62,7 @@ void NRF_WritePayload(uint8_t * Buffer, uint8_t Size)
 void NRF_FlushTx()
 {
 	SPI_Start();
-	SPI_SendByte(FLUSH_TX);
+	SPI_SendByte(NRF24_FLUSH_TX);
 	SPI_Stop();
 }
 

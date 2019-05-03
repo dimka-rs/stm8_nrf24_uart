@@ -3,6 +3,8 @@
 #include "main.h"
 #include "nrf24.h"
 #include "stdio.h"
+#include "clock.h"
+#include "gpio.h"
 
 /* Private defines -----------------------------------------------------------*/
 #define UART1_BAUDRATE 115200
@@ -22,10 +24,12 @@ nrfctl_t nrf;
 const uint8_t addr[ADDR_SIZE] = {0x1A, 0x1B, 0x1C, 0x1D, 0x1E};
 
 /* Private function prototypes -----------------------------------------------*/
-void InitClock();
-void InitGPIO();
 void InitUART();
-void InitNrf();
+void InitSPI();
+void InitNRF();
+static inline void LED_On();
+static inline void LED_Off();
+
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -33,40 +37,25 @@ void main(void)
 {
     InitClock();
     InitGPIO();
-    InitNrf();
     InitUART();
+    InitSPI();
+    InitNRF();
     enableInterrupts();
 
     printf("Start\r\n");
 
+    //printf("Status: %02X\r\n", NRF_ReadReg(NRF24_STATUS));
     while (1)
     {
         if(ReadyToSend)
         {
             ReadyToSend = 0;
             printf("Send\r\n");
+            //NRF_SendData(nrf.txbufptr, nrf.txbufsize);
         }
     }
 }
 
-void InitClock()
-{
-    /* Clock */
-    /* SYSCLK: 16/2 = 8 MHz */
-    CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV2);
-    /* CPUCLK: 8/1 = 8 MHz */
-    CLK_SYSCLKConfig(CLK_PRESCALER_CPUDIV1);
-}
-
-void InitGPIO()
-{
-    /* LED */
-    GPIO_Init(PORT_LED, PIN_LED, GPIO_MODE_OUT_PP_HIGH_SLOW);
-    /* NRF_CS */ 
-    GPIO_Init(PORT_NRF, PIN_NRF_CS, GPIO_MODE_OUT_PP_HIGH_SLOW);
-    /* NRF_CE */
-    GPIO_Init(PORT_NRF, PIN_NRF_CE, GPIO_MODE_OUT_PP_HIGH_SLOW);
-}
 
 void InitUART()
 {
@@ -95,18 +84,40 @@ void InitTimer4()
 }
 */
 
-void InitNrf()
+void InitSPI()
 {
-    NRF_WriteReg(CONFIG, CONFIG_EN_CRC|CONFIG_PRIM_RX|CONFIG_PWR_UP);
-    NRF_WriteReg(EN_AA, ENAA_P0);       //pipe 0 autoack
-    NRF_WriteReg(EN_RXADDR, ENRXA_P0);  //pipe 0 enabled
-    NRF_WriteReg(SETUP_AW, SETUP_AW_5); //addr width 5 bytes
-    NRF_WriteReg(SETUP_RETR, SETUP_RETR_ARD_250|SETUP_RETR_ARC_3); //retr delay and count
-    NRF_WriteReg(RF_CH, 2);      //TODO: channel?
-    NRF_WriteReg(RF_SETUP, RF_SETUP_DR_2M|RF_SETUP_PWR_M0DBM);
-    NRF_WriteAddress(RX_ADDR_P0, addr, ADDR_SIZE); //same address for rx and tx
-    NRF_WriteAddress(TX_ADDR,    addr, ADDR_SIZE); //
-    NRF_WriteReg(RX_PW_P0, PLD_SIZE); // payload size
+/*
+    SPI_Init(SPI_FIRSTBIT_MSB,
+            SPI_BAUDRATEPRESCALER_2,
+            SPI_MODE_MASTER,
+            SPI_CLOCKPOLARITY_LOW,
+            SPI_CLOCKPHASE_1EDGE,
+            SPI_DATADIRECTION_2LINES_FULLDUPLEX,
+            SPI_NSS_SOFT,
+            0);
+            */
+}
+
+void InitNRF()
+{
+    NRF_WriteReg(NRF24_CONFIG, CONFIG_EN_CRC|CONFIG_PRIM_RX|CONFIG_PWR_UP);
+    NRF_WriteReg(NRF24_EN_AA, ENAA_P0);       //pipe 0 autoack
+    NRF_WriteReg(NRF24_EN_RXADDR, ENRXA_P0);  //pipe 0 enabled
+    NRF_WriteReg(NRF24_SETUP_AW, SETUP_AW_5); //addr width 5 bytes
+    NRF_WriteReg(NRF24_SETUP_RETR, SETUP_RETR_ARD_250|SETUP_RETR_ARC_3); //retr delay and count
+    NRF_WriteReg(NRF24_RF_CH, 2);      //TODO: channel?
+    NRF_WriteReg(NRF24_RF_SETUP, RF_SETUP_DR_2M|RF_SETUP_PWR_M0DBM);
+    NRF_WriteAddress(NRF24_RX_ADDR_P0, addr, ADDR_SIZE); //same address for rx and tx
+    NRF_WriteAddress(NRF24_TX_ADDR,    addr, ADDR_SIZE); //
+    NRF_WriteReg(NRF24_RX_PW_P0, PLD_SIZE); // payload size
+}
+
+static inline void LED_On() {
+    GPIO_WriteLow(LED_PORT, LED_PIN);
+}
+
+static inline void LED_Off() {
+    GPIO_WriteHigh(LED_PORT, LED_PIN);
 }
 
 /***********************************************************************/
@@ -126,7 +137,7 @@ void tim4_isr(void) __interrupt(ITC_IRQ_TIM4_OVF) {
 
 void uart1rx_isr(void) __interrupt(ITC_IRQ_UART1_RX) {
     UART1_ClearFlag(UART1_FLAG_RXNE);
-    GPIO_WriteLow(PORT_LED, PIN_LED);
+    LED_On();
 //    TIM4_Cmd(ENABLE);
 //    TIM4_SetCounter(0);
     CurBuf[CurBufCnt] = UART1_ReceiveData8();
@@ -144,7 +155,7 @@ void uart1rx_isr(void) __interrupt(ITC_IRQ_UART1_RX) {
         nrf.txbufsize = CurBufCnt;
         CurBufCnt = 0;
         ReadyToSend = 1;
-        GPIO_WriteHigh(PORT_LED, PIN_LED);
+        LED_Off();
     }
 }
 

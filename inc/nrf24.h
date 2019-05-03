@@ -8,7 +8,7 @@
 #define ADDR_SIZE 5
 
 /* registers */
-#define CONFIG 0x00
+#define NRF24_CONFIG 0x00
 enum reg_config_t {
     CONFIG_MASK_RX_DR =     (1 << 6),
     CONFIG_MASK_TX_DS =     (1 << 5),
@@ -19,7 +19,7 @@ enum reg_config_t {
     CONFIG_PRIM_RX =        (1 << 0),
 };
 
-#define EN_AA 0x01
+#define NRF24_EN_AA 0x01
 enum reg_enaa_t {
     ENAA_P5 =   (1 << 5),
     ENAA_P4 =   (1 << 4),
@@ -29,7 +29,7 @@ enum reg_enaa_t {
     ENAA_P0 =   (1 << 0),
 };
 
-#define EN_RXADDR 0x02
+#define NRF24_EN_RXADDR 0x02
 enum reg_enrxaddr {
     ENRXA_P5 = (1 << 5),
     ENRXA_P4 = (1 << 4),
@@ -39,14 +39,14 @@ enum reg_enrxaddr {
     ENRXA_P0 = (1 << 0),
 };
 
-#define SETUP_AW 0x03
+#define NRF24_SETUP_AW 0x03
 enum reg_setupaw {
     SETUP_AW_3 = 1,
     SETUP_AW_4 = 2,
     SETUP_AW_5 = 3,
 };
 
-#define SETUP_RETR 0x04
+#define NRF24_SETUP_RETR 0x04
 enum reg_setupretr {
     SETUP_RETR_ARD_250 =    (0 << 4),
     SETUP_RETR_ARD_500 =    (1 << 4),
@@ -82,10 +82,10 @@ enum reg_setupretr {
     SETUP_RETR_ARC_15 =     (15),
 };
 
-#define RF_CH 0x05
+#define NRF24_RF_CH 0x05
 // channels are 0 to 63
 
-#define RF_SETUP 0x06
+#define NRF24_RF_SETUP 0x06
 enum reg_rfsetup {
     RF_SETUP_CONT_WAVE =    (1 << 7),
     RF_SETUP_PLL_LOCK =     (1 << 4),
@@ -98,7 +98,7 @@ enum reg_rfsetup {
     RF_SETUP_PWR_M0DBM =    6,
 };
 
-#define STATUS 0x07
+#define NRF24_STATUS 0x07
 enum reg_status {
     STATUS_RX_DR =      (1 << 6),
     STATUS_TX_DS =      (1 << 5),
@@ -113,28 +113,28 @@ enum reg_status {
     STATUS_RX_P5 =      (5 << 1),
 };
 
-#define OBSERVE_TX 0x08
+#define NRF24_OBSERVE_TX 0x08
 enum reg_observetx {
     OBSERVE_TX_PLOS_CNT_MASK = 0xF0,
     OBSERVE_TX_ARC_CNT_MASK = 0x0F,
 };
 
-#define RPD 0x09
+#define NRF24_RPD 0x09
 
-#define RX_ADDR_P0 0x0A // 5 bytes!
-#define RX_ADDR_P1 0x0B // 5 bytes!
-#define RX_ADDR_P2 0x0C
-#define RX_ADDR_P3 0x0D
-#define RX_ADDR_P4 0x0E
-#define RX_ADDR_P5 0x0F
-#define TX_ADDR 0x10 // 5 bytes!
-#define RX_PW_P0 0x11
-#define RX_PW_P1 0x12
-#define RX_PW_P2 0x13
-#define RX_PW_P3 0x14
-#define RX_PW_P4 0x15
-#define RX_PW_P5 0x16
-#define FIFO_STATUS 0x17
+#define NRF24_RX_ADDR_P0 0x0A // 5 bytes!
+#define NRF24_RX_ADDR_P1 0x0B // 5 bytes!
+#define NRF24_RX_ADDR_P2 0x0C
+#define NRF24_RX_ADDR_P3 0x0D
+#define NRF24_RX_ADDR_P4 0x0E
+#define NRF24_RX_ADDR_P5 0x0F
+#define NRF24_TX_ADDR 0x10 // 5 bytes!
+#define NRF24_RX_PW_P0 0x11
+#define NRF24_RX_PW_P1 0x12
+#define NRF24_RX_PW_P2 0x13
+#define NRF24_RX_PW_P3 0x14
+#define NRF24_RX_PW_P4 0x15
+#define NRF24_RX_PW_P5 0x16
+#define NRF24_FIFO_STATUS 0x17
 enum reg_fifostatus {
     FIFO_STATUS_TX_REUSE =  (1 << 6),
     FIFO_STATUS_TX_FULL =   (1 << 5),
@@ -143,7 +143,7 @@ enum reg_fifostatus {
     FIFO_STATUS_RX_EMPTY =  (1 << 0),
 };
 
-#define DYNPD 0x1C
+#define NRF24_DYNPD 0x1C
 enum reg_dynpd {
     DYNPD_P5 =  (1 << 5),
     DYNPD_P4 =  (1 << 4),
@@ -153,7 +153,7 @@ enum reg_dynpd {
     DYNPD_P0 =  (1 << 0),
 };
 
-#define FEATURE 0x1D
+#define NRF24_FEATURE 0x1D
 enum reg_feature {
     FEATURE_EN_DPL =        (1 << 2),
     FEATURE_EN_ACK_PAY =    (1 << 1),
@@ -161,14 +161,14 @@ enum reg_feature {
 };
 
 /* commands */
-#define R_RX_PL_WID  0x60
-#define R_RX_PAYLOAD 0x61 //up to 32 bytes
-#define W_TX_PAYLOAD 0xA0 //up to 32 bytes
-#define FLUSH_TX 0xE1
-#define FLUSH_RX 0xE2
-#define REUSE_TX_PL  0xE3
-#define W_ACK_PAYLOAD 0xA8 //add 3 LSB pipe address
-#define W_TX_PAYLOAD_NOACK 0xB0
+#define NRF24_R_RX_PL_WID  0x60
+#define NRF24_R_RX_PAYLOAD 0x61 //up to 32 bytes
+#define NRF24_W_TX_PAYLOAD 0xA0 //up to 32 bytes
+#define NRF24_FLUSH_TX 0xE1
+#define NRF24_FLUSH_RX 0xE2
+#define NRF24_REUSE_TX_PL  0xE3
+#define NRF24_W_ACK_PAYLOAD 0xA8 //add 3 LSB pipe address
+#define NRF24_W_TX_PAYLOAD_NOACK 0xB0
 
 /* public functions */
 uint8_t NRF_ReadReg(uint8_t regaddr);
