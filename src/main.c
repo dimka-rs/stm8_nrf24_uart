@@ -1,159 +1,183 @@
-/**
-  ******************************************************************************
-  * @file    Project/main.c
-  * @author  MCD Application Team
-  * @version V2.2.0
-  * @date    30-September-2014
-  * @brief   Main program body
-   ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; COPYRIGHT 2014 STMicroelectronics</center></h2>
-  *
-  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
-  * You may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at:
-  *
-  *        http://www.st.com/software_license_agreement_liberty_v2
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  *
-  ******************************************************************************
-  */
-
-
 /* Includes ------------------------------------------------------------------*/
 #include "stm8s.h"
 #include "main.h"
 #include "nrf24.h"
+#include "stdio.h"
 
 /* Private defines -----------------------------------------------------------*/
 #define UART1_BAUDRATE 115200
-#define RX_TOUT 10  // num of tim4 overflows, which are about 0.1 ms or 1 symbol
-#define PLD_WDTH 32 //payload width
-#define BUF_SIZE PLD_WDTH-1 //1 byte for actual data size
-uint8_t RxBufA[BUF_SIZE];
-uint8_t RxBufB[BUF_SIZE];
-uint8_t *CurBuf = RxBufA;
+#define PLD_SIZE 32 //payload size
+
+uint8_t TxBufA[PLD_SIZE];
+uint8_t TxBufB[PLD_SIZE];
+uint8_t RxBuf[PLD_SIZE];
+uint8_t *CurBuf = TxBufA;
 uint8_t CurBufCnt = 0;
 uint8_t RxDone;
+uint8_t ReadyToSend = 0;
+
+nrfctl_t nrf;
 
 #define ADDR_SIZE 5
 const uint8_t addr[ADDR_SIZE] = {0x1A, 0x1B, 0x1C, 0x1D, 0x1E};
 
 /* Private function prototypes -----------------------------------------------*/
-void Init();
+void InitClock();
+void InitGPIO();
+void InitUART();
 void InitNrf();
 
 /* Private functions ---------------------------------------------------------*/
 
 void main(void)
 {
-	uint8_t *BufToSend = CurBuf;
-	uint8_t BufToSendCnt = CurBufCnt;
-	Init();
-	InitNrf();
-  
-	while (1)
-	{
-		//while(UART1_GetFlagStatus(UART1_FLAG_TXE) != SET);
-		while(RxDone)
-		{
-			GPIO_WriteHigh(PORT_LED, PIN_LED);
-			RxDone = 0;
-			//save current buffer and cnt
-			//to send them later and
-			//swap buffers to continue rx
-			if(CurBuf == RxBufA) {
-				CurBuf = RxBufB;
-			} else {
-				CurBuf = RxBufA;
-			}
-			CurBufCnt = 0;
-			NRF_SendFrame(BufToSend, BufToSendCnt);
-		}
+    InitClock();
+    InitGPIO();
+    InitNrf();
+    InitUART();
+    enableInterrupts();
 
-	}
+    printf("Start\r\n");
+
+    while (1)
+    {
+        if(ReadyToSend)
+        {
+            ReadyToSend = 0;
+            printf("Send\r\n");
+        }
+    }
 }
 
-void Init()
+void InitClock()
 {
-	/* Clock */
-	/* SYSCLK: 16/1 = 16 MHz */
-	CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV1);
-	/* CPUCLK: 16/2 = 8 MHz */
-	CLK_SYSCLKConfig(CLK_PRESCALER_CPUDIV2);
-	
+    /* Clock */
+    /* SYSCLK: 16/2 = 8 MHz */
+    CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV2);
+    /* CPUCLK: 8/1 = 8 MHz */
+    CLK_SYSCLKConfig(CLK_PRESCALER_CPUDIV1);
+}
+
+void InitGPIO()
+{
     /* LED */
-	GPIO_Init(PORT_LED, PIN_LED, GPIO_MODE_OUT_PP_HIGH_SLOW);
-	/* NRF_CS */ 
-	GPIO_Init(PORT_NRF, PIN_NRF_CS, GPIO_MODE_OUT_PP_HIGH_SLOW);
-	/* NRF_CE */
-  	GPIO_Init(PORT_NRF, PIN_NRF_CE, GPIO_MODE_OUT_PP_HIGH_SLOW);
-	/* ADDRESS PIN */
-	GPIO_Init(PORT_ADDR, PIN_ADDR_1, GPIO_MODE_IN_PU_NO_IT);
+    GPIO_Init(PORT_LED, PIN_LED, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    /* NRF_CS */ 
+    GPIO_Init(PORT_NRF, PIN_NRF_CS, GPIO_MODE_OUT_PP_HIGH_SLOW);
+    /* NRF_CE */
+    GPIO_Init(PORT_NRF, PIN_NRF_CE, GPIO_MODE_OUT_PP_HIGH_SLOW);
+}
 
-	/* UART 1 */
-	UART1_Init(UART1_BAUDRATE, UART1_WORDLENGTH_8D, UART1_STOPBITS_1,
-				UART1_PARITY_NO, UART1_SYNCMODE_CLOCK_DISABLE,
-				UART1_MODE_TXRX_ENABLE);
-	UART1_ClearFlag(UART1_FLAG_RXNE);
-	/* RXNE fails assert, RXNE_OR works fine */
-	UART1_ITConfig(UART1_IT_RXNE_OR, ENABLE);
+void InitUART()
+{
+    /* UART 1 */
+    UART1_Init(UART1_BAUDRATE, UART1_WORDLENGTH_8D, UART1_STOPBITS_1,
+                UART1_PARITY_NO, UART1_SYNCMODE_CLOCK_DISABLE,
+                UART1_MODE_TXRX_ENABLE);
+    UART1_ClearFlag(UART1_FLAG_RXNE);
+    /* RXNE fails assert, RXNE_OR works fine */
+    UART1_ITConfig(UART1_IT_RXNE_OR, ENABLE);
+}
 
-	/* Timer 4 */
-	/* 16 MHz / 64 = 250 kHz timer clock */
-	/* count to 25 to get 10 kHz / 0.1 ms resolution */
-	/* one byte over uart takes about 0.1 ms */
+/*
+void InitTimer4()
+{
+    // Timer 4
+    // 16 MHz / 64 = 250 kHz timer clock
+    // count to 25 to get 10 kHz / 0.1 ms resolution
+    // one byte over uart takes about 0.1 ms
     TIM4_Cmd(DISABLE);
     TIM4_TimeBaseInit(TIM4_PRESCALER_64, 25);
-	//TIM4_SelectOnePulseMode(TIM4_OPMODE_SINGLE);
+    TIM4_SelectOnePulseMode(TIM4_OPMODE_SINGLE);
     TIM4_ClearFlag(TIM4_FLAG_UPDATE);
     TIM4_ITConfig(TIM4_IT_UPDATE, ENABLE);	
-	//TIM4_Cmd(ENABLE);
-
-	enableInterrupts();
+    TIM4_Cmd(ENABLE);
 }
+*/
 
 void InitNrf()
 {
-	NRF_WriteReg(CONFIG, 0x0A);		//CRC 1 byte, power up, PTX
-	NRF_WriteReg(EN_AA, 0x3F);		//auto ack on all pipes
-	NRF_WriteReg(EN_RXADDR, 0x01);	//pipes 0 enabled
-	NRF_WriteReg(SETUP_AW, 0x03);	//addr width 5 bytes
-	NRF_WriteReg(SETUP_RETR, 0x03);	// art delay 250 us, art count 3
-	NRF_WriteReg(RF_CH, 0x02);		//TODO: channel?
-	NRF_WriteReg(RF_SETUP, 0x0E);	//2 Mbit, 0 dBm
-	NRF_WriteAddress(RX_ADDR_P0, addr, ADDR_SIZE);	//same address for rx and tx
-	NRF_WriteAddress(TX_ADDR,    addr, ADDR_SIZE);	//
-	NRF_WriteReg(RX_PW_P0, PLD_WDTH);		// payload width
+    NRF_WriteReg(CONFIG, CONFIG_EN_CRC|CONFIG_PRIM_RX|CONFIG_PWR_UP);
+    NRF_WriteReg(EN_AA, ENAA_P0);       //pipe 0 autoack
+    NRF_WriteReg(EN_RXADDR, ENRXA_P0);  //pipe 0 enabled
+    NRF_WriteReg(SETUP_AW, SETUP_AW_5); //addr width 5 bytes
+    NRF_WriteReg(SETUP_RETR, SETUP_RETR_ARD_250|SETUP_RETR_ARC_3); //retr delay and count
+    NRF_WriteReg(RF_CH, 2);      //TODO: channel?
+    NRF_WriteReg(RF_SETUP, RF_SETUP_DR_2M|RF_SETUP_PWR_M0DBM);
+    NRF_WriteAddress(RX_ADDR_P0, addr, ADDR_SIZE); //same address for rx and tx
+    NRF_WriteAddress(TX_ADDR,    addr, ADDR_SIZE); //
+    NRF_WriteReg(RX_PW_P0, PLD_SIZE); // payload size
 }
 
 /***********************************************************************/
 
+/*
 void tim4_isr(void) __interrupt(ITC_IRQ_TIM4_OVF) {
     static uint8_t tim4cnt = 0;
-	TIM4_ClearITPendingBit(TIM4_IT_UPDATE);
+    TIM4_ClearITPendingBit(TIM4_IT_UPDATE);
     tim4cnt++;
     if(tim4cnt >= RX_TOUT){
-		TIM4_Cmd(DISABLE); //TODO: remove if one pulse mode really works
-		tim4cnt = 0;
-		RxDone = 1;
+        TIM4_Cmd(DISABLE); //TODO: remove if one pulse mode really works
+        tim4cnt = 0;
+        RxDone = 1;
     }   
 }
+*/
 
 void uart1rx_isr(void) __interrupt(ITC_IRQ_UART1_RX) {
-	UART1_ClearFlag(UART1_FLAG_RXNE);
-	GPIO_WriteLow(PORT_LED, PIN_LED);
-	TIM4_Cmd(ENABLE);
-	TIM4_SetCounter(0);
-	CurBuf[CurBufCnt] = UART1_ReceiveData8();
-	CurBufCnt++;
+    UART1_ClearFlag(UART1_FLAG_RXNE);
+    GPIO_WriteLow(PORT_LED, PIN_LED);
+//    TIM4_Cmd(ENABLE);
+//    TIM4_SetCounter(0);
+    CurBuf[CurBufCnt] = UART1_ReceiveData8();
+    CurBufCnt++;
+    if(CurBufCnt >= PLD_SIZE)
+    {
+        if(CurBuf == TxBufA)
+        {
+            CurBuf = TxBufB;
+            nrf.txbufptr = TxBufA;
+        } else {
+            CurBuf = TxBufA;
+            nrf.txbufptr = TxBufB;
+        }
+        nrf.txbufsize = CurBufCnt;
+        CurBufCnt = 0;
+        ReadyToSend = 1;
+        GPIO_WriteHigh(PORT_LED, PIN_LED);
+    }
 }
+
+/* Platform dependent functions */
+
+uint8_t SPI_SendByte(uint8_t Byte) {
+    //read/write byte from/to SPI
+    return (uint8_t) Byte;
+}
+
+void SPI_Start() {
+    //start SPI transaction
+}
+
+void SPI_Stop() {
+    //stop SPI transaction
+}
+
+void CE_Pulse() {
+    //assert CE for required time
+}
+
+/* Debug output*/
+
+int putchar (int c)
+{
+    // this implementation is SDCC 3.8 specific
+    // see sdcc stdio.h for details
+    UART1->DR = (uint8_t) c;
+    while (!(UART1->SR & UART1_FLAG_TXE));
+    return c;
+}
+
 
 // This is called by some of the SPL files on error.
 #ifdef USE_FULL_ASSERT
