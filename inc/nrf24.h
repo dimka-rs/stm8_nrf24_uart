@@ -177,7 +177,10 @@ void NRF_SendData(uint8_t * data, uint8_t size);
 void NRF_WriteAddress(uint8_t regaddr, uint8_t * data, uint8_t size);
 void NRF_WritePayload(uint8_t * data, uint8_t size);
 void NRF_ReadPayload(uint8_t * data, uint8_t size);
+void NRF_FlushRx();
 void NRF_FlushTx();
-
+void NRF_CE_Pulse();
+void NRF_CE_Low();
+void NRF_CE_High();
 #endif
 

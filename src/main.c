@@ -10,7 +10,7 @@
 #include "timer.h"
 
 /* Private defines -----------------------------------------------------------*/
-#define PLD_SIZE 5 //payload size
+#define PLD_SIZE 32 //payload size
 uint8_t TxBufA[PLD_SIZE];
 uint8_t TxBufB[PLD_SIZE];
 uint8_t RxBuf[PLD_SIZE];
@@ -41,28 +41,27 @@ void main(void)
     InitSPI();
     InitNRF();
 
-
-printf("Start\r\n");
-
-    printf("Config: %02X\r\n", NRF_ReadReg(NRF24_CONFIG));
-    printf("EN_AA: %02X\r\n", NRF_ReadReg(NRF24_EN_AA));
-    printf("EN_RXADDR: %02X\r\n", NRF_ReadReg(NRF24_EN_RXADDR));
-    printf("RF_SETUP: %02X\r\n", NRF_ReadReg(NRF24_RF_SETUP));
-    printf("Status: %02X\r\n", NRF_ReadReg(NRF24_STATUS));
-    printf("FIFO Status: %02X\r\n", NRF_ReadReg(NRF24_FIFO_STATUS));
     while (1)
     {
         if(ReadyToSend)
         {
             ReadyToSend = 0;
-            printf("Send\r\n");
             NRF_SendData(nrf.txbufptr, nrf.txbufsize);
-            printf("Status: %02X\r\n", NRF_ReadReg(NRF24_STATUS));
-            printf("Observe: %02X\r\n", NRF_ReadReg(NRF24_OBSERVE_TX));
-            printf("FIFO Status: %02X\r\n", NRF_ReadReg(NRF24_FIFO_STATUS));
             // clear all flags
             NRF_WriteReg(NRF24_STATUS, STATUS_MAX_RT|STATUS_TX_DS|STATUS_RX_DR);
             NRF_FlushTx();
+        }
+        if(! (NRF_ReadReg(NRF24_FIFO_STATUS) & FIFO_STATUS_RX_EMPTY))
+        {
+            NRF_ReadPayload(RxBuf, PLD_SIZE);
+            // clear flags
+            NRF_WriteReg(NRF24_STATUS, STATUS_MAX_RT|STATUS_TX_DS|STATUS_RX_DR);
+            // send pld to uart
+            for(uint8_t i = 0; i < PLD_SIZE; i++)
+            {
+                UART1->DR = (uint8_t) RxBuf[i];
+                while (!(UART1->SR & UART1_FLAG_TXE));
+            }
         }
     }
 }
@@ -78,14 +77,17 @@ void InitNRF()
     NRF_WriteReg(NRF24_RX_PW_P0, PLD_SIZE); // payload size
     NRF_WriteAddress(NRF24_RX_ADDR_P0, addr, ADDR_SIZE); //same address for rx and tx
     NRF_WriteAddress(NRF24_TX_ADDR,    addr, ADDR_SIZE); //
-    NRF_WriteReg(NRF24_CONFIG, CONFIG_EN_CRC);
+    NRF_WriteReg(NRF24_CONFIG, CONFIG_EN_CRC|CONFIG_PRIM_RX|CONFIG_PWR_UP); //Listen mode
+    NRF_CE_High(); // start rx
 }
 
-inline void LED_On() {
+inline void LED_On()
+{
     GPIO_WriteLow(LED_PORT, LED_PIN);
 }
 
-inline void LED_Off() {
+inline void LED_Off()
+{
     GPIO_WriteHigh(LED_PORT, LED_PIN);
 }
 
@@ -102,8 +104,6 @@ void tim4_isr(void) __interrupt(ITC_IRQ_TIM4_OVF) {
 void uart1rx_isr(void) __interrupt(ITC_IRQ_UART1_RX) {
     UART1->SR &= ~(UART1_FLAG_RXNE); // clear it flag
     LED_On();
-//    TIM4_Cmd(ENABLE);
-//    TIM4_SetCounter(0);
     CurBuf[CurBufCnt] = UART1->DR;
     CurBufCnt++;
     if(CurBufCnt >= PLD_SIZE)
